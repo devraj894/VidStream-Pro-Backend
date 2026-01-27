@@ -1,0 +1,11 @@
+{
+  "name": "vidstream-pro-backend",
+  "version": "1.0.0",
+  "description": "Video Hosting & Streaming Plateform - Backend",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Devraj Songara",
+  "license": "ISC"
+}
