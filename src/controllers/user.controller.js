@@ -217,6 +217,11 @@ const changeCurrentUserPassword = asyncHandler( async (req, res) => {
     const {oldPassword, newPassword} = req.body;
 
     const user = await User.findById(req.user?._id)
+
+    if(!user){
+        throw new ApiError(404, "User not found");
+    }
+
     const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
 
     if(!isPasswordCorrect){
@@ -244,7 +249,16 @@ const updateAccountDetails = asyncHandler( async (req, res) => {
         throw new ApiError(400, "All fields are required")
     }
 
-    const user = User.findByIdAndUpdate(
+    const emailExists = await User.findOne({
+        email,
+        _id: {$ne: req.user._id}
+    });
+
+    if(emailExists){
+        throw new ApiError(409, "Email already in use");
+    }
+
+    const user = await User.findByIdAndUpdate(
         req.user?._id, 
         {
             $set: {
@@ -273,7 +287,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Error while uploading on avatar")
     }
 
-    const user = await User.findById(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set:{
@@ -301,7 +315,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Error while uploading the cover image")
     }
 
-    const user = await User.findById(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set:{
