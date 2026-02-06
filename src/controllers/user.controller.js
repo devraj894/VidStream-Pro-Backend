@@ -274,7 +274,7 @@ const updateAccountDetails = asyncHandler( async (req, res) => {
     .json(new ApiResponse(200, user, "Account details updated successfully"))
 })
 
-const updateUserAvatar = asyncHandler(async (req, res) => {
+const updateUserAvatar = asyncHandler( async (req, res) => {
     const avatarLocalPath = req.file?.path
 
     if(!avatarLocalPath){
@@ -302,7 +302,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "Avatar updated successfully"))
 })
 
-const updateUserCoverImage = asyncHandler(async (req, res) => {
+const updateUserCoverImage = asyncHandler( async (req, res) => {
     const coverImageLocalPath = req.file?.path
 
     if(!coverImageLocalPath){
@@ -330,7 +330,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "Cover image updated successfully"))
 })
 
-const getUserChannelProfile = asyncHandler(asyncHandler(async(req, res) => {
+const getUserChannelProfile = asyncHandler( async (req, res) => {
     const {username} = req.params
 
     if(!username?.trim()){
@@ -399,7 +399,7 @@ const getUserChannelProfile = asyncHandler(asyncHandler(async(req, res) => {
     .json(
         new ApiResponse(200, channel[0], "User channel fetched successfully")
     )
-}))
+})
 
 export { 
     registerUser,
