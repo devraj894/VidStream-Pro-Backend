@@ -17,9 +17,18 @@ const uploadOnCloudinary = async (localFilePath) => {
         fs.unlinkSync(localFilePath);
         return response;
     } catch(err){
-        fs.unlinkSync(localFilePath);
+        if(fs.existsSync(localFilePath)) fs.unlinkSync(localFilePath);
         return null;
     }
 }
 
-export {uploadOnCloudinary};
+const deleteOnCloudinary = async (publicId) => {
+    try{
+        if(!publicId) return;
+        await cloudinary.uploader.destroy(publicId);
+    } catch(err){
+        console.log("Error while deleting on avatar: ", err);
+    }
+}
+
+export {uploadOnCloudinary, deleteOnCloudinary};

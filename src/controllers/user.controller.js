@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError} from "../utils/ApiError.js";
 import { User }  from "../models/user.model.js";
-import { uploadOnCloudinary } from "../services/cloudinaryService.js";
+import { deleteOnCloudinary, uploadOnCloudinary } from "../services/cloudinaryService.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -57,17 +57,31 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // upload them to cloudinary, avatar
     const avatar = await uploadOnCloudinary(avatarLocalPath);
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-    if(!avatar){
+    // const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    if(!avatar || !avatar.url || !avatar.public_id){
         throw new ApiError(500, "Could not upload avatar image. Please try again");
+    }
+
+    let coverImage;
+    
+    if(coverImageLocalPath){
+        coverImage = await uploadOnCloudinary(coverImageLocalPath);
     }
 
     // create user object - create entry in db
     const user = await User.create({
         fullName,
-        avatar: avatar.url,
-        coverImage: coverImage?.url || "",
+        avatar: {
+            url: avatar.url,
+            public_id: avatar.public_id
+        },
+        coverImage: coverImage
+          ? {
+                url: coverImage.url,
+                public_id: coverImage.public_id
+            }
+          : undefined,
         email,
         password,
         username: username.toLowerCase(),
@@ -284,19 +298,36 @@ const updateUserAvatar = asyncHandler( async (req, res) => {
 
     const avatar = await uploadOnCloudinary(avatarLocalPath);
 
-    if(!avatar.url){
+    if(!avatar || !avatar.url){
         throw new ApiError(400, "Error while uploading on avatar")
     }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set:{
-                avatar: avatar.url
-            }
-        },
-        {new: true}
-    ).select("-password")
+    const user = await User.findById(req.user._id).select("-password");
+
+    if(!user){
+        throw new ApiError(404, "User not found");
+    }
+
+    if(user.avatar?.public_id){
+        await deleteOnCloudinary(user.avatar.public_id);
+    }
+
+    user.avatar = {
+        url: avatar.url,
+        public_id: avatar.public_id
+    }
+
+    await user.save({validateBeforeSave: false});
+
+    // const user = await User.findByIdAndUpdate(
+    //     req.user?._id,
+    //     {
+    //         $set:{
+    //             avatar: avatar.url
+    //         }
+    //     },
+    //     {new: true}
+    // ).select("-password")
 
      return res
     .status(200)
@@ -312,19 +343,36 @@ const updateUserCoverImage = asyncHandler( async (req, res) => {
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-    if(!coverImage.url){
+    if(!coverImage || !coverImage.url){
         throw new ApiError(400, "Error while uploading the cover image")
     }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set:{
-                coverImage: coverImage.url
-            }
-        },
-        {new: true}
-    ).select("-password")
+    const user = await User.findById(req.user._id).select("-password");
+
+    if(!user){
+        throw new ApiError(404, "User not found");
+    }
+
+    if(user.coverImage?.public_id){
+        await deleteOnCloudinary(user.coverImage.public_id);
+    }
+
+    user.coverImage = {
+        url: coverImage.url,
+        public_id: coverImage.public_id
+    }
+
+    await user.save({validateBeforeSave: false});
+
+    // const user = await User.findByIdAndUpdate(
+    //     req.user?._id,
+    //     {
+    //         $set:{
+    //             coverImage: coverImage.url
+    //         }
+    //     },
+    //     {new: true}
+    // ).select("-password")
 
     return res
     .status(200)
