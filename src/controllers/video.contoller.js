@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Video } from "../models/video.model.js";
 import { deleteOnCloudinary, uploadOnCloudinary } from "../services/cloudinaryService.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -56,4 +57,32 @@ const publishAVideo = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, video, "Video published successfully"))
 })
 
-export { publishAVideo };
+const getVideoById = asyncHandler(async (req, res) => {
+    // get video id from a params
+    const {videoId} = req.params;
+
+    if(!mongoose.Types.ObjectId.isValid(videoId)){
+        throw new ApiError(400, "Invalid Video Id");
+    }
+
+    // search in DB for video id
+    const video = await Video.findById(videoId).populate("owner", "username avatar");
+
+    if(!video || !video.isPublished){
+        throw new ApiError(404, "video not found");
+    }
+
+    // increament view on that video
+    // TODO: Unique view tracking can be implemented using separate view collection.
+    video.views += 1;
+
+    // save updated video to DB
+    await video.save({validateBeforeSave: false});
+
+    // return response
+    return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video fetched successfully"))
+})
+
+export { publishAVideo, getVideoById };
