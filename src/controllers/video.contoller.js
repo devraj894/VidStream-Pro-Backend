@@ -85,4 +85,130 @@ const getVideoById = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "Video fetched successfully"))
 })
 
-export { publishAVideo, getVideoById };
+const updateVideo = asyncHandler(async (req, res) => {
+    // get video id from params
+    const {videoId} = req.params;
+
+    if(!mongoose.Types.ObjectId.isValid(videoId)){
+        throw new ApiError(400, "Invalid Video Id")
+    }
+
+    // search video in db
+    const video = await Video.findById(videoId);
+
+    if(!video){
+        throw new ApiError(404, "Video not found");
+    }
+
+    // owner authorization check
+    if(video.owner.toString() !== req.user._id.toString()){
+        throw new ApiError(403, "You are not authorized to update this video");
+    }
+
+    // get title, description and thumbnail to update
+    const {title, description} = req.body;
+    const thumbnailPath = req.files?.thumbnail[0]?.path;
+
+    if(!title && !description && !thumbnailPath){
+        throw new ApiError(400, "Atleast one detail is required to update");
+    }
+
+    // update title, description, thumbnail
+    if(title){
+        video.title = title;
+    }
+    
+    if(description){
+        video.description = description;
+    }
+
+    if(thumbnailPath){
+        const uploadedThumbnail = await uploadOnCloudinary(thumbnailPath);
+
+        if(!uploadedThumbnail){
+            throw new ApiError(500, "Failed to upload thumbnail");
+        }
+
+        await deleteOnCloudinary(video.thumbnail.public_id);
+
+        video.thumbnail = {
+            url: uploadedThumbnail.url,
+            public_id: uploadedThumbnail.public_id
+        };
+    }
+
+    // save to db
+    await video.save({validateBeforeSave: false});
+
+    // return response
+    return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video updated successfully"));
+})
+
+const deleteVideo = asyncHandler(async (req, res) => {
+    // get video id from params
+    const {videoId} = req.params;
+
+    if(!mongoose.Types.ObjectId.isValid(videoId)){
+        throw new ApiError(400, "Invalid Video Id");
+    }
+
+    // find video
+    const video = await Video.findById(videoId);
+
+    if(!video){
+        throw new ApiError(404, "Video not found");
+    }
+
+    // owner authorization check
+    if(video.owner.toString() !== req.user._id.toString()){
+        throw new ApiError(403, "You are not authorized to update this video");
+    }
+
+    // delete video from cloudinary
+    if(video.thumbnail?.public_id) await deleteOnCloudinary(video.thumbnail.public_id);
+    if(video.videoFile?.public_id) await deleteOnCloudinary(video.videoFile.public_id);
+
+    // delete video data from db
+    await Video.findByIdAndDelete(videoId);
+
+    // return response
+    return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Video deleted successfully"));
+})
+
+const togglePublishStatus = asyncHandler(async (req, res) => {
+    // get video id from params
+    const {videoId} = req.params;
+
+    if(!mongoose.Types.ObjectId.isValid(videoId)){
+        throw new ApiError(400, "Invalid Video Id")
+    }
+
+    // search video in db
+    const video = await Video.findById(videoId);
+
+    if(!video){
+        throw new ApiError(404, "Video not found");
+    }
+
+    // owner authorization check
+    if(video.owner.toString() !== req.user._id.toString()){
+        throw new ApiError(403, "You are not authorized to update this video");
+    }
+
+    // update toggel in db
+    video.isPublished = !video.isPublished
+
+    // save to db
+    await video.save({validateBeforeSave: false});
+
+    // return response
+    return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video publish status updated successfully"));
+})
+
+export { publishAVideo, getVideoById, updateVideo, deleteVideo, togglePublishStatus };
