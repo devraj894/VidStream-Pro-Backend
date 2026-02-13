@@ -5,6 +5,86 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
+const getAllVideos = asyncHandler(async (req, res) => {
+    // get data from query
+    const {page = 1, limit = 10, query, sortBy, sortType, userId} = req.query;
+
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+
+    // choose only publish videos
+    const match = {
+        isPublished: true
+    };
+
+    // search
+    if(query){
+        match.title = {
+            $regex: query,
+            $options: "i"
+        };
+    }
+
+    // filter by owner
+    if(userId){
+        if(!mongoose.Types.ObjectId.isValid(userId)){
+            throw new ApiError(400, "Invalid user id");
+        }
+        match.owner = mongoose.Types.ObjectId(userId);
+    }
+
+    // sorting
+    const sortOptions = {};
+    if(sortBy){
+        sortOptions[sortBy] = sortType === "asc" ? 1 : -1;
+    } else{
+        sortOptions.createdAt = -1;
+    }
+
+    // aggregate pipline
+    const aggregate = Video.aggregate([
+        {
+            $match: match
+        },
+        {
+            $sort: sortOptions
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "Owner",
+                pipeline: [
+                    {
+                        $project: {
+                            username: 1,
+                            fullName: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $unwind: "$Owner"
+        }
+    ]);
+
+    // apply pagination
+    const options = {
+        page: pageNumber,
+        limit: limitNumber
+    }
+
+    const videos = await Video.aggregatePaginate(aggregate, options);
+
+    // return response
+    return res
+    .status(200)
+    .json(new ApiResponse(200, videos, "Videos fetched successfully"))
+})
+
 const publishAVideo = asyncHandler(async (req, res) => {
     // get title and description
     const {title, description} = req.body;
@@ -211,4 +291,11 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "Video publish status updated successfully"));
 })
 
-export { publishAVideo, getVideoById, updateVideo, deleteVideo, togglePublishStatus };
+export { 
+    getAllVideos, 
+    publishAVideo, 
+    getVideoById, 
+    updateVideo, 
+    deleteVideo, 
+    togglePublishStatus 
+};
