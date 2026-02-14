@@ -22,10 +22,12 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 }
 
-const deleteOnCloudinary = async (publicId) => {
+const deleteOnCloudinary = async (publicId, resourceType = "image") => {
     try{
         if(!publicId) return;
-        await cloudinary.uploader.destroy(publicId);
+        await cloudinary.uploader.destroy(publicId, {
+            resource_type: resourceType
+        })
     } catch(err){
         console.log("Error while deleting on avatar: ", err);
     }

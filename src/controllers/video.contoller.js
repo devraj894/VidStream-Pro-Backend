@@ -186,8 +186,8 @@ const updateVideo = asyncHandler(async (req, res) => {
     }
 
     // get title, description and thumbnail to update
-    const {title, description} = req.body;
-    const thumbnailPath = req.files?.thumbnail[0]?.path;
+    const {title, description} = req.body || {};
+    const thumbnailPath = req.file?.path;
 
     if(!title && !description && !thumbnailPath){
         throw new ApiError(400, "Atleast one detail is required to update");
@@ -247,8 +247,8 @@ const deleteVideo = asyncHandler(async (req, res) => {
     }
 
     // delete video from cloudinary
-    if(video.thumbnail?.public_id) await deleteOnCloudinary(video.thumbnail.public_id);
-    if(video.videoFile?.public_id) await deleteOnCloudinary(video.videoFile.public_id);
+    if(video.thumbnail?.public_id) await deleteOnCloudinary(video.thumbnail.public_id, "image");
+    if(video.videoFile?.public_id) await deleteOnCloudinary(video.videoFile.public_id, "video");
 
     // delete video data from db
     await Video.findByIdAndDelete(videoId);
