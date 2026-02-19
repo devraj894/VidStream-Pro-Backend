@@ -44,19 +44,80 @@ const createPlaylist = asyncHandler(async (req, res) => {
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
     // get user id
-    const {userId} = req.params;
+    const {userId} = req.params || req.user._id;
 
     // validate user id
     if(!mongoose.Types.ObjectId.isValid(userId)){
         throw new ApiError(400, "Invalid user id");
     }
 
-    // find playlist
-    const playlist = await Playlist.find({owner: req.user._id}).sort({createdAt: -1});
+    // aggration piplines
+    const playlists = await Playlist.aggregate([
+        // filter playlists that belong to the current user
+        {
+            $match: {
+                owner: new mongoose.Types.ObjectId(userId)
+            }
+        },
+        // sort playlists by newest first
+        {
+            $sort: { createdAt: -1 }
+        },
+        // add a new field "totalVideos" and calculate the length of videos array
+        {
+            $addFields: {
+                totalVideos: { $size: "$videos" }
+            }
+        },
+        // lookup the first video from "videos" collection, to get thumnail for playlist 
+        {
+            $lookup: {
+                from: "videos",
+                let: { firstVideoId: { $arrayElemAt: ["$videos", 0] } },
+                pipeline: [
+                    // match the video whose id equals firstVideoId
+                    {
+                        $match: {
+                            $expr: { $eq: ["$_id", "$$firstVideoId"] }
+                        }
+                    },
+                    // Only select thumbnail field (avoid heavy data)
+                    {
+                        $project: {
+                            thumbnail: 1
+                        }
+                    }
+                ],
+                // result will be stored in this array
+                as: "previewVideo"
+            }
+        },
+        // extract thumbnail URL safely or if playlist has no videos → previewThumbnail = null
+        {
+            $addFields: {
+                previewThumbnail: {
+                    $ifNull: [
+                        { $arrayElemAt: ["$previewVideo.thumbnail.url", 0] },
+                        null
+                    ]
+                }
+            }
+        },
+        // Final shape of the response
+        {
+            $project: {
+                name: 1,
+                description: 1,
+                createdAt: 1,
+                totalVideos: 1,
+                previewThumbnail: 1
+            }
+        }
+    ]);  
 
     // return
     return res.status(200).json(
-        new ApiResponse(200, playlist, "Playlist fetched successfully")
+        new ApiResponse(200, playlists, "Playlist fetched successfully")
     )
 })
 
@@ -102,7 +163,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     }
 
     // only owner allow to add video from playlist
-    if(playlist.owner.toString() !== req.user._id){
+    if(playlist.owner.toString() !== req.user._id.toString()){
         throw new ApiError(403, "You are not allowed to add video in this playlist");
     }
 
@@ -123,8 +184,8 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     }
 
     // add video in playlist
-    Playlist.findByIdAndUpdate(
-        playlist,
+    await Playlist.findByIdAndUpdate(
+        playlistId,
         {
             $addToSet: {
                 videos: videoId
@@ -137,7 +198,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
 
     // return
     return res.status(200).json(
-        new ApiResponse(200, playlist, "Video added to playlist successfully")
+        new ApiResponse(200, null, "Video added to playlist successfully")
     )
 })
 
@@ -175,7 +236,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
 
     // return 
     return res.status(200).json(
-        new ApiResponse(200, playlist, "Video removed from playlist successfully")
+        new ApiResponse(200, null, "Video removed from playlist successfully")
     )
 })
 
@@ -224,11 +285,11 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     // prepare update object
     const updateFields = {};
     
-    if(name.trim()){
+    if(name?.trim()){
         updateFields.name = name.trim();
     }
 
-    if(description.trim()){
+    if(description?.trim()){
         updateFields.description = description.trim();
     }
 
@@ -238,9 +299,9 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     }
 
     // update playlist (Ownership check included)
-    const updatedPlaylist = Playlist.findByIdAndUpdate(
+    const updatedPlaylist = await Playlist.findByIdAndUpdate(
         {
-            id: playlistId,
+            _id: playlistId,
             owner: req.user._id
         },
         {
