@@ -141,7 +141,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     )
 })
 
-const removeVideoToPlaylist = asyncHandler(async (req, res) => {
+const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     // get data (videoId and playlistId)
     const {videoId, playlistId} = req.params;
 
@@ -267,7 +267,7 @@ export {
     getUserPlaylists,
     getPlaylistById,
     addVideoToPlaylist,
-    removeVideoToPlaylist,
+    removeVideoFromPlaylist,
     deletePlaylist,
     updatePlaylist
 }
