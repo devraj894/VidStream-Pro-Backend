@@ -46,13 +46,17 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     // get user id
     const {userId} = req.params || req.user._id;
 
+    // pagination params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
     // validate user id
     if(!mongoose.Types.ObjectId.isValid(userId)){
         throw new ApiError(400, "Invalid user id");
     }
 
     // aggration piplines
-    const playlists = await Playlist.aggregate([
+    const aggregate = Playlist.aggregate([
         // filter playlists that belong to the current user
         {
             $match: {
@@ -113,7 +117,15 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
                 previewThumbnail: 1
             }
         }
-    ]);  
+    ]); 
+    
+    // pagination options
+    const options = {
+        page,
+        limit
+    }
+
+    const playlists = await Playlist.aggregatePaginate(aggregate, options);
 
     // return
     return res.status(200).json(
