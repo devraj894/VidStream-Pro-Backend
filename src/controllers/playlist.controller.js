@@ -143,6 +143,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     }
 
     // find playlist
+    // TODO: In future, implement pagination for videos array to handle large playlists efficiently
     const playlist = await Playlist.findById(playlistId)
         .populate("owner", "username fullName avatar")
         .populate("videos", "title thumbnail duration views owner");
