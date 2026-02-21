@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
-import { asyncHandler } from "../utils/asyncHandler";
-import { ApiError } from "../utils/ApiError";
-import { Video } from "../models/video.model";
-import { Comment } from "../models/comment.model";
-import { ApiResponse } from "../utils/ApiResponse";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
+import { Video } from "../models/video.model.js";
+import { Comment } from "../models/comment.model.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 const getVideoComments = asyncHandler(async (req, res) => {
     // get data (video id and queries)
@@ -23,7 +23,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
         // filter comments based on video
         {
             $match: {
-                video: mongoose.Types.ObjectId(videoId)
+                video: new mongoose.Types.ObjectId(videoId)
             }
         },
         // apply sorting to newest first based
@@ -161,7 +161,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     }
 
     // delete comment if user is either the comment owner OR the video owner
-    if (comment.owner.toString() !== req.user._id && comment.video.owner.toString() !== req.user._id) {
+    if (comment.owner.toString() !== req.user._id.toString() && comment.video.owner.toString() !== req.user._id.toString()) {
         throw new ApiError(403, "You are not allowed to delete comment");
     }
 
