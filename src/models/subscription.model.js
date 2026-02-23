@@ -11,4 +11,6 @@ const subscriptionSchema = new Schema({
     }
 }, {timestamps: true});
 
+subscriptionSchema.index({channel: 1});
+
 export const Subscription = mongoose.model('Subscription', subscriptionSchema);

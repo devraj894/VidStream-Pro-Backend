@@ -20,7 +20,7 @@ const likeSchema = new Schema({
     },
 }, {timestamps: true})
 
-likeSchema.index({video: 1, likedBy: 1}, {unique: true});
+likeSchema.index({video: 1, likedBy: 1, tweet: 1}, {unique: true});
 
 likeSchema.plugin(mongooseAggregatePaginate)
 
