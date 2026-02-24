@@ -5,7 +5,7 @@ import {
     getUserTweets, 
     updateTweet,
     deleteTweet 
-} from "../controllers/tweet.contoller.js";
+} from "../controllers/tweet.controller.js";
 
 const router = Router();
 router.use(verifyJWT);
