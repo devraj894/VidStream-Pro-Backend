@@ -4,6 +4,7 @@ import { deleteOnCloudinary, uploadOnCloudinary } from "../services/cloudinarySe
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { User } from "../models/user.model.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
     // get data from query
@@ -155,6 +156,30 @@ const getVideoById = asyncHandler(async (req, res) => {
     // increament view on that video
     // TODO: Unique view tracking can be implemented using separate view collection.
     video.views += 1;
+
+    // update watch history
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $pull: {
+                watchHistory: {
+                    video: videoId
+                }
+            }
+        }
+    );
+
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $push: {
+                watchHistory: {
+                    video: videoId,
+                    watchedAt: new Date()
+                }
+            }
+        }
+    );
 
     // save updated video to DB
     await video.save({validateBeforeSave: false});

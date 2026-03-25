@@ -458,11 +458,19 @@ const getWatchHistory = asyncHandler( async (req, res) => {
             }
         },
         {
+            $unwind: "$watchHistory"
+        },
+        {
+            $sort: {
+                "watchHistory.watchedAt": -1
+            }
+        },
+        {
             $lookup: {
                 from: "videos",
-                localField: "watchHistory",
+                localField: "watchHistory.video",
                 foreignField: "_id",
-                as: "watchHistory",
+                as: "video",
                 pipeline: [
                     {
                         $lookup: {
@@ -489,6 +497,18 @@ const getWatchHistory = asyncHandler( async (req, res) => {
                         }
                     }
                 ]
+            },
+        },
+        {
+            $addFields: {
+                video: {
+                    $first: "$video"
+                }
+            }
+        },
+        {
+            $replaceRoot: {
+                newRoot: "$video"
             }
         }
     ])
@@ -498,7 +518,7 @@ const getWatchHistory = asyncHandler( async (req, res) => {
     .json(
         new ApiResponse(
             200,
-            user[0].watchHistory,
+            user,
             "Watch history fetched successfully"
         )
     )
