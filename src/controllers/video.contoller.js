@@ -153,9 +153,17 @@ const getVideoById = asyncHandler(async (req, res) => {
         throw new ApiError(404, "video not found");
     }
 
-    // increament view on that video
-    // TODO: Unique view tracking can be implemented using separate view collection.
-    video.views += 1;
+   // atomic unique view increment
+    await Video.findOneAndUpdate(
+        {
+            _id: videoId,
+            viewedBy: { $ne: req.user._id }
+        },
+        {
+            $inc: { views: 1 },
+            $push: { viewedBy: req.user._id }
+        }
+    );
 
     // update watch history
     await User.findByIdAndUpdate(
@@ -182,7 +190,7 @@ const getVideoById = asyncHandler(async (req, res) => {
     );
 
     // save updated video to DB
-    await video.save({validateBeforeSave: false});
+    // await video.save({validateBeforeSave: false});
 
     // return response
     return res
