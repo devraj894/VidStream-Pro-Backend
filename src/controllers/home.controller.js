@@ -47,9 +47,44 @@ const getHomeFeed = asyncHandler(async (req, res) => {
         }
     ])
 
+    // latest (recent uploaded)
+    const latestPromise = Video.aggregate([
+        {
+            $match: {
+                isPublished: true
+            }
+        },
+        {
+            $sort: {
+                createdAt: -1
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "Owner",
+                pipeline: [
+                    {
+                        $project: {
+                            username: 1,
+                            fullName: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $unwind: "$Owner"
+        }
+    ]);
+
     // parellel execution
-    let [trending] = await Promise.all([
-        trendingPromise
+    let [trending, latest] = await Promise.all([
+        trendingPromise,
+        latestPromise
     ]);
 
     // featured (first data of trending)
@@ -60,7 +95,8 @@ const getHomeFeed = asyncHandler(async (req, res) => {
         new ApiResponse(200, {
             featured,
             sections: [
-                {title: "Trending", videos: trending}
+                {title: "Trending", videos: trending},
+                {title: "Latest", videos: latest}
             ]
         }, "Home feed fetched successfully")
     );
