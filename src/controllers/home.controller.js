@@ -52,9 +52,13 @@ const getHomeFeed = asyncHandler(async (req, res) => {
         trendingPromise
     ]);
 
+    // featured (first data of trending)
+    const featured = trending[0] || null;
+
     // return
     return res.status(200).json(
         new ApiResponse(200, {
+            featured,
             sections: [
                 {title: "Trending", videos: trending}
             ]
