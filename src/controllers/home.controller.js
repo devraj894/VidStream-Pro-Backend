@@ -1,8 +1,12 @@
+import { Subscription } from "../models/subscription.model";
 import { Video } from "../models/video.model";
 import { ApiResponse } from "../utils/ApiResponse";
 import { asyncHandler } from "../utils/asyncHandler";
 
 const getHomeFeed = asyncHandler(async (req, res) => {
+    // get loggedIn user id
+    const userId = req.user._id;
+
     // date ranges
     const last7days = new Date();
     last7days.setDate(last7days.getDate() - 7);
@@ -81,10 +85,57 @@ const getHomeFeed = asyncHandler(async (req, res) => {
         }
     ]);
 
+    // subscription (only subscribed channel latest videos)
+    let subscriptionsPromise = Promise.resolve([]);
+
+    if(userId){
+        const channels = await Subscription.find({
+            subscriber: userId
+        }).distinct("channel");
+
+        subscriptionsPromise = Video.aggregate([
+            {
+                $match: {
+                    isPublished: true,
+                    owner: {
+                        $in: channels
+                    }
+                }
+            },
+            {
+                $sort: {
+                    createdAt: -1
+                }
+            },
+            {
+                $limit: 10
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "Owner",
+                    pipeline: [
+                        {
+                            username: 1,
+                            fullName: 1,
+                            avatar: 1
+                        }
+                    ]
+                }
+            },
+            {
+                $unwind: "$Owner"
+            }
+        ]);
+    }
+
     // parellel execution
-    let [trending, latest] = await Promise.all([
+    let [trending, latest, subscriptions] = await Promise.all([
         trendingPromise,
-        latestPromise
+        latestPromise,
+        subscriptionsPromise
     ]);
 
     // featured (first data of trending)
@@ -96,7 +147,8 @@ const getHomeFeed = asyncHandler(async (req, res) => {
             featured,
             sections: [
                 {title: "Trending", videos: trending},
-                {title: "Latest", videos: latest}
+                {title: "Latest", videos: latest},
+                {title: "Subscriptions", videos: subscriptions}
             ]
         }, "Home feed fetched successfully")
     );
