@@ -1,7 +1,7 @@
-import { Subscription } from "../models/subscription.model";
-import { Video } from "../models/video.model";
-import { ApiResponse } from "../utils/ApiResponse";
-import { asyncHandler } from "../utils/asyncHandler";
+import { Subscription } from "../models/subscription.model.js";
+import { Video } from "../models/video.model.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 const getHomeFeed = asyncHandler(async (req, res) => {
     // get loggedIn user id

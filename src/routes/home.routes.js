@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { verifyJWT } from "../middleware/auth.middleware";
-import { getHomeFeed } from "../controllers/home.controller";
+import { verifyJWT } from "../middleware/auth.middleware.js";
+import { getHomeFeed } from "../controllers/home.controller.js";
 
 const router = Router();
 router.use(verifyJWT);
