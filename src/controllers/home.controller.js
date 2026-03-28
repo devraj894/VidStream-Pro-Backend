@@ -131,11 +131,79 @@ const getHomeFeed = asyncHandler(async (req, res) => {
         ]);
     }
 
+    // recommended(history + creators + keywords)
+    let recommendationsPromise = Promise.resolve([]);
+
+    if (userId) {
+        const user = await User.findById(userId).populate("watchHistory.video");
+
+        const watchedVideoIds = user.watchHistory.map(v => v.video?._id).filter(Boolean);
+
+        const favoriteOwners = user.watchHistory
+            .slice(-10)
+            .map(v => v.video?.owner?.toString())
+            .filter(Boolean);
+
+        const lastWatchedTitle = user.watchHistory[user.watchHistory.length - 1]?.video?.title?.split(" ")[0];
+
+        recommendationsPromise = Video.aggregate([
+            {
+                $match: {
+                    isPublished: true,
+                    _id: {
+                            $nin: watchedVideoIds 
+                        },
+                    $or: [
+                        { 
+                            owner: {
+                                $in: favoriteOwners 
+                            } 
+                        },
+                        lastWatchedTitle
+                            ? {
+                                 title: {
+                                    $regex: lastWatchedTitle, $options: "i" 
+                                } 
+                            }
+                            : {}
+                    ]
+                }
+            },
+            { 
+                $sort: {
+                    views: -1 
+                } 
+            },
+            { 
+                $limit: 10 
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "Owner",
+                    pipeline: [
+                        { 
+                            $project: {
+                                username: 1, fullName: 1, avatar: 1 
+                            } 
+                        }
+                    ]
+                }
+            },
+            { 
+                $unwind: "$Owner" 
+            }
+        ]);
+    }
+
     // parellel execution
-    let [trending, latest, subscriptions] = await Promise.all([
+    let [trending, latest, subscriptions, recommended] = await Promise.all([
         trendingPromise,
         latestPromise,
-        subscriptionsPromise
+        subscriptionsPromise,
+        recommendationsPromise
     ]);
 
     // featured (first data of trending)
@@ -148,7 +216,8 @@ const getHomeFeed = asyncHandler(async (req, res) => {
             sections: [
                 {title: "Trending", videos: trending},
                 {title: "Latest", videos: latest},
-                {title: "Subscriptions", videos: subscriptions}
+                {title: "Subscriptions", videos: subscriptions},
+                {title: "Recommended", videos: recommended}
             ]
         }, "Home feed fetched successfully")
     );
