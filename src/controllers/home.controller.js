@@ -1,4 +1,5 @@
 import { Subscription } from "../models/subscription.model.js";
+import { User } from "../models/user.model.js";
 import { Video } from "../models/video.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -118,9 +119,11 @@ const getHomeFeed = asyncHandler(async (req, res) => {
                     as: "Owner",
                     pipeline: [
                         {
-                            username: 1,
-                            fullName: 1,
-                            avatar: 1
+                            $project: {
+                                username: 1,
+                                fullName: 1,
+                                avatar: 1
+                            }
                         }
                     ]
                 }
