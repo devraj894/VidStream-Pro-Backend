@@ -217,6 +217,16 @@ const getHomeFeed = asyncHandler(async (req, res) => {
         recommendationsPromise
     ]);
 
+    // fallback for recommeded
+    if(!recommended.length){
+        recommended = trending
+    }
+
+    // fallback for subscriptions
+    if(!subscriptions.length){
+        subscriptions = trending
+    }
+
     // featured (first data of trending)
     const featured = trending[0] || null;
 
