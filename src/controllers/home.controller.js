@@ -140,45 +140,51 @@ const getHomeFeed = asyncHandler(async (req, res) => {
     if (userId) {
         const user = await User.findById(userId).populate("watchHistory.video");
 
-        const watchedVideoIds = user.watchHistory.map(v => v.video?._id).filter(Boolean);
+        const watchedVideoIds = user.watchHistory
+            .map(v => v.video?._id)
+            .filter(Boolean);
 
         const favoriteOwners = user.watchHistory
             .slice(-10)
-            .map(v => v.video?.owner?.toString())
+            .map(v => v.video?.owner)
             .filter(Boolean);
 
-        const lastWatchedTitle = user.watchHistory[user.watchHistory.length - 1]?.video?.title?.split(" ")[0];
+        const lastWatchedTitle = user.watchHistory.at(-1)?.video?.title;
 
         recommendationsPromise = Video.aggregate([
             {
                 $match: {
                     isPublished: true,
-                    _id: {
-                            $nin: watchedVideoIds 
-                        },
+
+                    // own videos remove
+                    owner: { 
+                        $ne: userId 
+                    },
+
+                    // already watched remove
+                    _id: { 
+                        $nin: watchedVideoIds 
+                    },
+
+                    // dynamic OR conditions
                     $or: [
-                        { 
-                            owner: {
-                                $in: favoriteOwners 
-                            } 
-                        },
-                        lastWatchedTitle
-                            ? {
-                                 title: {
-                                    $regex: lastWatchedTitle, $options: "i" 
-                                } 
-                            }
-                            : {}
+                        ...(favoriteOwners.length
+                            ? [{ owner: { $in: favoriteOwners } }]
+                            : []),
+
+                        ...(lastWatchedTitle
+                            ? [{ title: { $regex: lastWatchedTitle, $options: "i" } }]
+                            : [])
                     ]
                 }
             },
             { 
-                $sort: {
+                $sort: { 
                     views: -1 
                 } 
             },
             { 
-                $limit: 10 
+                $limit: 10
             },
             {
                 $lookup: {
@@ -187,10 +193,12 @@ const getHomeFeed = asyncHandler(async (req, res) => {
                     foreignField: "_id",
                     as: "Owner",
                     pipeline: [
-                        { 
+                        {
                             $project: {
-                                username: 1, fullName: 1, avatar: 1 
-                            } 
+                                username: 1,
+                                fullName: 1,
+                                avatar: 1
+                            }
                         }
                     ]
                 }
