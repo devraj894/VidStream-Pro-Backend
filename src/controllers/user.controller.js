@@ -105,39 +105,54 @@ const registerUser = asyncHandler( async (req, res) => {
 
 const loginUser = asyncHandler( async (req, res) => {
     // get login credentials from frontend
-    const {username, email, password} = req.body;
+    const {identifier, password} = req.body;
 
     // check username/email
-    if(!username && !email){
+    if(!identifier){
         throw new ApiError(400, "Username or email is required");
     }
 
-    // find user
-    const user = await User.findOne({
-        $or: [{username}, {email}]
-    })
+    // check password
+    if(!password){
+        throw new ApiError(400, "Password is required");
+    }
 
-    if(!user){
-        throw new ApiError(404, "User does not exist");
+    // find user
+    // const user = await User.findOne({
+    //     $or: [{username}, {email}]
+    // })
+    const cleanIdentifier = identifier.trim().toLowerCase();
+
+    let user;
+
+    if(cleanIdentifier.includes("@")){
+        user = await User.findOne({email: cleanIdentifier});
+    } else {
+        user = await User.findOne({username: cleanIdentifier});
+    }
+
+    if(!user || !(await user.isPasswordCorrect(password))){
+        throw new ApiError(401, "Invalid credentials");
     }
 
     // password check
-    const isPasswordValid = await user.isPasswordCorrect(password);
+    // const isPasswordValid = await user.isPasswordCorrect(password);
 
-    if(!isPasswordValid){
-        throw new ApiError(401, "Invalid credentials");
-    }
+    // if(!isPasswordValid){
+    //     throw new ApiError(401, "Invalid credentials");
+    // }
 
     // access and refresh token
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
 
-    const loggedInUser = await User.findById(user._id)
-    .select("-password -refreshToken");
+    const loggedInUser = user.toObject();
+    delete loggedInUser.password;
+    delete loggedInUser.refreshToken;
 
     // send cookie
     const options = {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
     }
 
     // return response
@@ -150,8 +165,8 @@ const loginUser = asyncHandler( async (req, res) => {
             200, 
             {
                 user: loggedInUser,
-                accessToken,
-                refreshToken
+                // accessToken,
+                // refreshToken
             }, 
             "User logged in successfully"
         )
