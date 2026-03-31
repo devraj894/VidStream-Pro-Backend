@@ -198,6 +198,101 @@ const getVideoById = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, video, "Video fetched successfully"))
 })
 
+const getSuggestedVideos = asyncHandler(async (req, res) => {
+    // get video id from a params
+    const {videoId} = req.params;
+
+    // get loggedIn user id
+    const userId = req.user._id;
+
+    // validate video id
+    if(!mongoose.Types.ObjectId.isValid(videoId)){
+        throw new ApiError(400, "Invalid Video Id");
+    }
+
+    // find video
+    const video = await Video.findById(videoId);
+
+    if(!video){
+        throw new ApiError(404, "video not found");
+    }
+
+    // get user history and video details
+    const user = await User.findById(userId).populate("watchHistory.video");
+
+    if(!user){
+        throw new ApiError(404, "User not found");
+    }
+
+    // get watched video ids
+    const watchedVideoIds = user.watchHistory.map(v => v.video?._id).filter(Boolean);
+
+    // get favourite owners
+    const favoriteOwners = user.watchHistory.slice(-10).map(v => v.video?.owner).filter(Boolean);
+
+    // get suggested videos based on history and favourite owners
+    const suggestions = await Video.aggregate([
+        {
+            $match: {
+                isPublished: true,
+                _id: { 
+                    $ne: video._id, 
+                    $nin: watchedVideoIds 
+                },
+                 $or: [
+                    { 
+                        owner: video.owner 
+                    }, 
+                    { 
+                        owner: { 
+                            $in: favoriteOwners 
+                        } 
+                    }, 
+                    { 
+                        title: {
+                            $regex: video.title, 
+                            $options: "i" 
+                        } 
+                    } 
+                ]
+            }
+        },
+        {
+            $sort: {
+                views: -1
+            }
+        },
+        {
+            $limit: 10
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "Owner",
+                pipeline: [
+                    {
+                        $project: {
+                            username: 1,
+                            fullName: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $unwind: "$Owner"
+        }
+    ]);
+
+    // return
+    return res.status(200).json(
+        new ApiResponse(200, suggestions, "Suggested videos fetched successfully")
+    );
+})
+
 const updateVideo = asyncHandler(async (req, res) => {
     // get video id from params
     const {videoId} = req.params;
@@ -327,7 +422,8 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
 export { 
     getAllVideos, 
     publishAVideo, 
-    getVideoById, 
+    getVideoById,
+    getSuggestedVideos, 
     updateVideo, 
     deleteVideo, 
     togglePublishStatus 
