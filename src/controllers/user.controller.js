@@ -149,11 +149,13 @@ const loginUser = asyncHandler( async (req, res) => {
     delete loggedInUser.password;
     delete loggedInUser.refreshToken;
 
+    const isProd = process.env.NODE_ENV === "production";
+
     // send cookie
     const options = {
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
         path: "/"
     }
 
