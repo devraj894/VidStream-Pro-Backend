@@ -5,6 +5,7 @@ import { deleteOnCloudinary, uploadOnCloudinary } from "../services/cloudinarySe
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import path from "path";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try{
@@ -153,7 +154,8 @@ const loginUser = asyncHandler( async (req, res) => {
     const options = {
         httpOnly: true,
         secure: true,
-        sameSite: "none"
+        sameSite: "none",
+        path: "/"
     }
 
     // return response
