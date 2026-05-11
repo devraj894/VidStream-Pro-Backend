@@ -151,6 +151,25 @@ const getHomeFeed = asyncHandler(async (req, res) => {
 
         const lastWatchedTitle = user.watchHistory.at(-1)?.video?.title;
 
+        const orConditions = [];
+
+        if(favoriteOwners.length){
+            orConditions.push({ 
+                owner: { 
+                    $in: favoriteOwners 
+                } 
+            });
+        }
+
+        if(lastWatchedTitle){
+            orConditions.push({ 
+                title: { 
+                    $regex: lastWatchedTitle, 
+                    $options: "i" 
+                } 
+            });
+        }
+
         recommendationsPromise = Video.aggregate([
             {
                 $match: {
@@ -167,15 +186,9 @@ const getHomeFeed = asyncHandler(async (req, res) => {
                     },
 
                     // dynamic OR conditions
-                    $or: [
-                        ...(favoriteOwners.length
-                            ? [{ owner: { $in: favoriteOwners } }]
-                            : []),
-
-                        ...(lastWatchedTitle
-                            ? [{ title: { $regex: lastWatchedTitle, $options: "i" } }]
-                            : [])
-                    ]
+                    ...(orConditions.length > 0 && {
+                        $or: orConditions
+                    })
                 }
             },
             { 
