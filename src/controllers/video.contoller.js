@@ -55,7 +55,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 from: "users",
                 localField: "owner",
                 foreignField: "_id",
-                as: "Owner",
+                as: "owner",
                 pipeline: [
                     {
                         $project: {
@@ -67,8 +67,12 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 ]
             }
         },
-        {
-            $unwind: "$Owner"
+         {
+            $addFields: {
+                owner: {
+                    $first: "$owner"
+                }
+            }
         }
     ]);
 
@@ -147,7 +151,7 @@ const getVideoById = asyncHandler(async (req, res) => {
     }
 
     // search in DB for video id
-    const video = await Video.findById(videoId).populate("owner", "username avatar");
+    const video = await Video.findById(videoId).populate("owner", "username fullName avatar");
 
     if(!video || !video.isPublished){
         throw new ApiError(404, "video not found");
@@ -270,7 +274,7 @@ const getSuggestedVideos = asyncHandler(async (req, res) => {
                 from: "users",
                 localField: "owner",
                 foreignField: "_id",
-                as: "Owner",
+                as: "owner",
                 pipeline: [
                     {
                         $project: {
@@ -282,8 +286,12 @@ const getSuggestedVideos = asyncHandler(async (req, res) => {
                 ]
             }
         },
-        {
-            $unwind: "$Owner"
+         {
+            $addFields: {
+                owner: {
+                    $first: "$owner"
+                }
+            }
         }
     ]);
 
