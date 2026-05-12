@@ -35,7 +35,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
                 from: "users",
                 localField: "owner",
                 foreignField: "_id",
-                as: "Owner",
+                as: "owner",
                 pipeline: [
                     {
                         $project: {
@@ -48,7 +48,11 @@ const getHomeFeed = asyncHandler(async (req, res) => {
             }
         },
         {
-            $unwind: "$Owner"
+            $addFields: {
+                owner: {
+                    $first: "$owner"
+                }
+            }
         }
     ])
 
@@ -69,7 +73,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
                 from: "users",
                 localField: "owner",
                 foreignField: "_id",
-                as: "Owner",
+                as: "owner",
                 pipeline: [
                     {
                         $project: {
@@ -82,7 +86,11 @@ const getHomeFeed = asyncHandler(async (req, res) => {
             }
         },
         {
-            $unwind: "$Owner"
+            $addFields: {
+                owner: {
+                    $first: "$owner"
+                }
+            }
         }
     ]);
 
@@ -116,7 +124,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
                     from: "users",
                     localField: "owner",
                     foreignField: "_id",
-                    as: "Owner",
+                    as: "owner",
                     pipeline: [
                         {
                             $project: {
@@ -129,7 +137,11 @@ const getHomeFeed = asyncHandler(async (req, res) => {
                 }
             },
             {
-                $unwind: "$Owner"
+                $addFields: {
+                    owner: {
+                        $first: "$owner"
+                    }
+                }
             }
         ]);
     }
@@ -204,7 +216,7 @@ const getHomeFeed = asyncHandler(async (req, res) => {
                     from: "users",
                     localField: "owner",
                     foreignField: "_id",
-                    as: "Owner",
+                    as: "owner",
                     pipeline: [
                         {
                             $project: {
@@ -216,8 +228,12 @@ const getHomeFeed = asyncHandler(async (req, res) => {
                     ]
                 }
             },
-            { 
-                $unwind: "$Owner" 
+            {
+                $addFields: {
+                    owner: {
+                        $first: "$owner"
+                    }
+                }
             }
         ]);
     }
