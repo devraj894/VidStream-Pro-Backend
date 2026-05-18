@@ -28,6 +28,10 @@ const createTweet = asyncHandler(async (req, res) => {
 const getUserTweets = asyncHandler(async (req, res) => {
     // get userId
     const userId = req.params.userId || req.user._id;
+
+    // get loggedIn userId
+    const currentUserId = req.user?._id || null;
+    
     const {page = 1, limit = 10} = req.query;
 
     const pageNumber = parseInt(page);
@@ -47,6 +51,73 @@ const getUserTweets = asyncHandler(async (req, res) => {
         },
         {
             $sort: { createdAt: -1 }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "owner",
+                pipeline: [
+                    {
+                        $project: {
+                            fullName: 1,
+                            username: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                owner: {
+                    $first: "$owner"
+                }
+            }
+        },
+        {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "tweet",
+                as: "likes",
+                pipeline: [
+                    {
+                        $project: {
+                        likedBy: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                likesCount: {
+                    $size: "$likes"
+                }
+            }
+        },
+        {
+            $addFields: {
+                isLiked: currentUserId
+                    ? {
+                        $in: [
+                            new mongoose.Types.ObjectId(currentUserId),
+                            "$likes.likedBy"
+                        ]
+                    }
+                    : false
+            }
+        },
+        {
+            $project: {
+                content: 1,
+                owner: 1,
+                createdAt: 1,
+                likesCount: 1,
+                isLiked: 1
+            }
         }
     ]);
 
