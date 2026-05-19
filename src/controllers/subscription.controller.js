@@ -54,6 +54,9 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
 
+    // get loggedIn userId
+    const currentUserId = req.user._id;
+
     // validate channel id
     if(!mongoose.Types.ObjectId.isValid(channelId)){
         throw new ApiError(400, "Invalid channel id");
@@ -85,11 +88,40 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
             $unwind: "$subscriberDetails",
         },
         {
+            $lookup: {
+                from: "subscriptions",
+                let: {
+                    subscriberId: "$subscriberDetails._id",
+                    currentUserId: new mongoose.Types.ObjectId(currentUserId)
+                },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$subscriber", "$$currentUserId"] },
+                                    { $eq: ["$channel", "$$subscriberId"] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: "isSubscribedData"
+            }
+        },
+        {
             $project: {
                 _id: "$subscriberDetails._id",
                 username: "$subscriberDetails.username",
                 fullName: "$subscriberDetails.fullName",
-                avatar: "$subscriberDetails.avatar.url",
+                avatar: {
+                    url: "$subscriberDetails.avatar.url",
+                    public_id: "$subscriberDetails.avatar.public_id"
+                },
+                isSubscribed: {
+                    $gt: [{ $size: "$isSubscribedData" }, 0]
+                },
+
                 subscribedAt: "$createdAt",
             }
         },
@@ -124,6 +156,9 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
     const pageNumber = parseInt(page);
     const limitNumber = parseInt(limit);
 
+    // get loggedIn userId
+    const currentUserId = req.user._id;
+
     // validate subscriber id
     if(!mongoose.Types.ObjectId.isValid(subscriberId)){
         throw new ApiError(400, "Invalid subscriber id");
@@ -155,11 +190,39 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
             $unwind: "$channelDetails",
         },
         {
+            $lookup: {
+                from: "subscriptions",
+                let: {
+                    channelId: "$channelDetails._id",
+                    currentUserId: new mongoose.Types.ObjectId(currentUserId)
+                },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$subscriber", "$$currentUserId"] },
+                                    { $eq: ["$channel", "$$channelId"] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: "isSubscribedData"
+            }
+        },
+        {
             $project: {
                 _id: "$channelDetails._id",
                 username: "$channelDetails.username",
                 fullName: "$channelDetails.fullName",
-                avatar: "$channelDetails.avatar.url",
+                avatar: {
+                    url: "$channelDetails.avatar.url",
+                    public_id: "$channelDetails.avatar.public_id"
+                },
+                isSubscribed: {
+                    $gt: [{ $size: "$isSubscribedData" }, 0]
+                },
                 subscribedAt: "$createdAt",
             }
         },
