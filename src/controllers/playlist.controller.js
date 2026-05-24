@@ -44,7 +44,7 @@ const createPlaylist = asyncHandler(async (req, res) => {
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
     // get user id
-    const {userId} = req.params || req.user._id;
+    const userId = req.params.userId || req.user._id;
 
     // pagination params
     const page = parseInt(req.query.page) || 1;
@@ -107,6 +107,52 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
                 }
             }
         },
+        {
+            $lookup: {
+                from: "videos",
+                let: { videoIds: "$videos" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $in: ["$_id", "$$videoIds"]
+                            }
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: "likes",
+                            localField: "_id",
+                            foreignField: "video",
+                            as: "likes"
+                        }
+                    },
+                    {
+                        $addFields: {
+                            totalLikes: { $size: "$likes" }
+                        }
+                    },
+                    {
+                        $project: {
+                            views: 1,
+                            totalLikes: 1
+                        }
+                    }
+                ],
+                as: "playlistVideosData"
+            }
+        },
+        {
+            $addFields: {
+                totalViews: {
+                    $sum: "$playlistVideosData.views"
+                },
+                totalLikes: {
+                    $sum: "$playlistVideosData.totalLikes"
+                }
+            }
+        },
+
         // Final shape of the response
         {
             $project: {
@@ -114,7 +160,9 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
                 description: 1,
                 createdAt: 1,
                 totalVideos: 1,
-                previewThumbnail: 1
+                previewThumbnail: 1,
+                totalViews: 1,
+                totalLikes: 1
             }
         }
     ]); 
