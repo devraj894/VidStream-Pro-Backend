@@ -54,6 +54,51 @@ const getVideoComments = asyncHandler(async (req, res) => {
         {
             $unwind: "$ownerInfo"
         },
+        // comment likes
+        {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "comment",
+                as: "likes"
+            }
+        },
+        // computed fields
+        {
+            $addFields: {
+                likesCount: {
+                    $size: "$likes"
+                },
+
+                isLiked: {
+                    $cond: {
+                        if: req.user?._id,
+                        then: {
+                            $in: [
+                                req.user._id,
+                                "$likes.likedBy"
+                            ]
+                        },
+                        else: false
+                    }
+                }
+            }
+        },
+        // final response shape
+        {
+            $project: {
+                content: 1,
+                video: 1,
+                owner: 1,
+                createdAt: 1,
+                updatedAt: 1,
+
+                likesCount: 1,
+                isLiked: 1,
+
+                ownerInfo: 1
+            }
+        }
     ])
 
     // pagination options
